@@ -66,6 +66,11 @@ export interface GameMap {
   hexes: Record<string, MapHex>;
   startHexId: string;
   dataStatus: 'verified' | 'unverified'; // 数据核验状态
+  // 胜利区内的船终点渲染坐标（row/col 同格子坐标系）：键为 `格子>方向`
+  // （如 "q9>east"），值为该方向上紧邻的线内落点。船进线时 shipHex 置为
+  // victory_*，客户端据此把船画在紧邻格再宣布终局；旧存档地图无此字段时
+  // 客户端回退为不渲染船位。
+  victoryPoints?: Record<string, { row: number; col: number }>;
 }
 
 // ============ 房间/玩家 ============

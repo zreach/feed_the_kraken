@@ -19,13 +19,29 @@ const FactionCard: React.FC<{ faction: FactionMark | null; revealed: boolean }> 
   </div>
 );
 
-export const PlayersPanel: React.FC<{ view: PlayerView }> = ({ view }) => {
-  const [myFactionOpen, setMyFactionOpen] = useState(false);
+export const PlayersPanel: React.FC<{ view: PlayerView; roomId: string }> = ({ view, roomId }) => {
+  // 自己的阵营卡默认翻开（新玩家常找不到阵营信息在哪）
+  const [myFactionOpen, setMyFactionOpen] = useState(true);
   const [zoomCard, setZoomCard] = useState<string | null>(null);
-  const [marks, setMarks] = useState<Record<number, FactionMark | undefined>>({});
   const [markingSeat, setMarkingSeat] = useState<number | null>(null);
+  // 私人阵营标注：按 房间+本人座位 持久化到 localStorage，刷新后不丢
+  const markKey = `ftk-marks:${roomId}:${view.you.seatId}`;
+  const [marks, setMarks] = useState<Record<number, FactionMark | undefined>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(markKey) ?? '{}');
+    } catch {
+      return {};
+    }
+  });
   const setMark = (seatId: number, mark?: FactionMark) => {
-    setMarks((current) => ({ ...current, [seatId]: mark }));
+    setMarks((current) => {
+      const next = { ...current, [seatId]: mark };
+      if (mark === undefined) delete next[seatId];
+      try {
+        localStorage.setItem(markKey, JSON.stringify(next));
+      } catch { /* 存储不可用时标注仅本次会话有效 */ }
+      return next;
+    });
     setMarkingSeat(null);
   };
   return <div className="players" onClick={() => markingSeat !== null && setMarkingSeat(null)}>
@@ -74,7 +90,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ p, view, myFactionOpen, onToggl
         <FactionCard faction={faction} revealed={factionRevealed} />
       </button>
       {marking && <div className="faction-mark-menu" role="menu" onClick={(e) => e.stopPropagation()}>
-        <b>私下标注阵营</b>
+        <b>标注 TA 的阵营（仅自己可见）</b>
         <button onClick={() => onMark('sailor')}>水手</button><button onClick={() => onMark('pirate')}>海盗</button>
         <button onClick={() => onMark('cult')}>邪教</button><button onClick={() => onMark(undefined)}>清除标注</button>
       </div>}

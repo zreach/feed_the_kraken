@@ -268,7 +268,7 @@ const PlayerGameView: React.FC<{
       {err && <div className="err">⚠ {err}</div>}
       <div className="game-main">
         <div className="col left">
-          <PlayersPanel view={view} />
+          <PlayersPanel view={view} roomId={session.roomId} />
           <div className="quick-actions">
             <button className="quick-action" onClick={() => setLibrary('role')}><span>🎭</span>我的角色</button>
             <button className="quick-action" onClick={() => setLibrary('rules')}><span>📖</span>游戏规则</button>
@@ -497,7 +497,7 @@ const SpectatorGameView: React.FC<{
       ) : (
         <div className="game-main">
           <div className="col left">
-            <PlayersPanel view={view} />
+            <PlayersPanel view={view} roomId={session.roomId} />
           </div>
           <div className="col mid">
             <div className="board-bar">

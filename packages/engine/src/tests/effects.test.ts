@@ -110,6 +110,8 @@ describe('角色效果：任意时机', () => {
     applyCommand(state, 2, { type: 'activateCharacter', characterId: 'chr_lookout' });
     const p = expectPending(state, 'telescopeDecision', 2);
     expect(p.data.src).toBe('lookout');
+    // cardPreview 必须下发给本人，否则客户端弹窗没有卡面（用户实测回归）
+    expect(p.data.cardPreview).toBe(topBefore);
     applyCommand(state, 2, { type: 'telescopeDecision', discard: false });
     expect(state.navDeck[0]).toBe(topBefore);
   });

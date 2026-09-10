@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --force",
     "build": "tsc -p tsconfig.json && vite build",
     "preview": "vite preview"
   },

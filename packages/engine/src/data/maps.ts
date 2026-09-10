@@ -108,6 +108,13 @@ const ACTIONS: Record<number, MapHex['action']> = {
 
 const SUPPLY_LINE_ROW = 4; // row >= 4 视为补给线以北（依据地图照片虚线位置，待最终核验）
 
+// 每个方向的紧邻步长（row, col）：长图东西向走半行一整列，北向走一整行
+const L_STEP: Record<'north' | 'west' | 'east', [number, number]> = {
+  north: [1, 0],
+  west: [0.5, -1],
+  east: [0.5, 1],
+};
+
 function buildLongMap(): GameMap {
   const hexes: Record<string, MapHex> = {};
   for (const node of NODES) {
@@ -125,12 +132,23 @@ function buildLongMap(): GameMap {
       supply: node.row >= SUPPLY_LINE_ROW,
     };
   }
+  // 进线落点：victory_* 出口的紧邻格位置，键为 `格子>方向`
+  const victoryPoints: Record<string, { row: number; col: number }> = {};
+  for (const h of Object.values(hexes)) {
+    for (const dir of ['north', 'west', 'east'] as const) {
+      if (h.exits[dir].startsWith('victory_')) {
+        const [dr, dc] = L_STEP[dir];
+        victoryPoints[`${h.id}>${dir}`] = { row: h.row + dr, col: h.col + dc };
+      }
+    }
+  }
   return {
     id: 'long',
     nameZh: '长航程（7-11人）',
     hexes,
     startHexId: 'h1',
     dataStatus: 'unverified',
+    victoryPoints,
   };
 }
 
@@ -141,6 +159,25 @@ function buildLongMap(): GameMap {
 // 11 行晶格、22 格；行动格 3×舱搜 + 2×献祭（与规则书组件数一致）；
 // 无补给线、无鞭刑/割舌。船从南部起点出发。
 // 坐标：row 南→北；col：整数行 -1/0/+1，交错行 ±0.5。
+//
+// 2026-09 修正（用户实测反馈 + 照片局部核验，见 docs/RULES_NOTES.md §10）：
+// - 原转录从起点连打 3 张同色牌即直抵蓝湾/绯红湾，与实体板不符。
+//   实体板（用户口述锚定）：起点第 3 张蓝/红牌箭头均向上，蓝、红线各 5 张
+//   同色牌进胜利区（黄线原为 5 张，三方对称）。据此仅改 4 个出口：
+//   蓝线 q1→q2b→q3b→q5c→q7c→蓝湾（5蓝，q3b.e/q5c.e 改判，q7c.e 原转录即蓝湾）；
+//   红线 q1→q2→q3→q5→q7→绯红湾（5红，q3.w/q5.w 改判，q7.w 原转录即绯红湾）。
+// - 2026-09-10 补充实测：两蓝一黄后船不应"跳到中间岛"——东侧纵列的黄牌箭头
+//   也应紧贴本列向上，故 q3b.n 由 q5b（中间列）改判为 q5c（东侧纵列正上方）。
+//   东侧纵列实际为一条竖直通道：q2b/q3b/q5c/q7c 上下相邻，蓝黄牌均可沿列直上。
+// - 2026-09-10 补充实测：蓝后红 / 红后蓝 不应落在两红/两蓝的落点（原转录
+//   q2b.w 与 q2.e 均误指 q3）。改判为汇合到中间列的 q3c（修道院格）：
+//   q2b.w→q3c、q2.e→q3c。q2b.n→q4b、q2.n→q4（舱搜格）暂保留待核。
+// - 2026-09-10 补充实测：q9 为三线交汇格——三支箭头分别直插三条线：
+//   东=蓝湾、西=绯红湾、北=海妖之域，一步判胜（蓝线涉及 3 格：q7c/q8b/q9，
+//   红线 3 格：q7/q8/q9，黄线 1 格：q9）。原转录 q9 指向 q10/q10b/q11 的出口作废，
+//   这三个格子现不可达，仅保留数据不渲染航线（待实体板最终确认后清理）。
+// - 已知存疑待核：q2 的西/东出口同指 q3（与长图多出口同靶先例一致，暂保留）、
+//   q7.n 直指绯红湾。整体拓扑仍待与实体板逐格复核。
 // ============================================================
 
 type QHexInit = { id: string; row: number; col: number; n?: string; w?: string; e?: string; action?: MapHex['action'] };
@@ -153,19 +190,19 @@ const Q_NODES: QHexInit[] = [
   // row 1（最南）
   { id: 'q1',  row: 1,   col: 0,  n: 'q3c', w: 'q2',  e: 'q2b' },
   // row 1.5
-  { id: 'q2',  row: 1.5, col: -0.5, n: 'q4', w: 'q3', e: 'q3' },
-  { id: 'q2b', row: 1.5, col: 0.5,  n: 'q4b', w: 'q3', e: 'q3b' },
+  { id: 'q2',  row: 1.5, col: -0.5, n: 'q4', w: 'q3', e: 'q3c' },
+  { id: 'q2b', row: 1.5, col: 0.5,  n: 'q4b', w: 'q3c', e: 'q3b' },
   // row 2
-  { id: 'q3',  row: 2,   col: -1,  n: 'q5',  w: Q_V_P, e: 'q4' },
-  { id: 'q3b', row: 2,   col: 1,   n: 'q5b', w: 'q4b', e: Q_V_S },
+  { id: 'q3',  row: 2,   col: -1,  n: 'q5',  w: 'q5', e: 'q4' },
+  { id: 'q3b', row: 2,   col: 1,   n: 'q5c', w: 'q4b', e: 'q5c' },
   { id: 'q3c', row: 2,   col: 0,   n: 'q6',  w: 'q4',  e: 'q4b' },
   // row 2.5（舱搜）
   { id: 'q4',  row: 2.5, col: -0.5, n: 'q6', w: 'q5', e: 'q5b', action: 'cabinSearch' },
   { id: 'q4b', row: 2.5, col: 0.5,  n: 'q6b', w: 'q5b', e: 'q5c', action: 'cabinSearch' },
   // row 3（舱搜 / 城堡 / 右）
-  { id: 'q5',  row: 3,   col: -1,  n: 'q7',  w: Q_V_P, e: 'q6', action: 'cabinSearch' },
+  { id: 'q5',  row: 3,   col: -1,  n: 'q7',  w: 'q7', e: 'q6', action: 'cabinSearch' },
   { id: 'q5b', row: 3,   col: 0,   n: 'q7b', w: 'q6', e: 'q6b' },
-  { id: 'q5c', row: 3,   col: 1,   n: 'q7c', w: 'q6b', e: Q_V_S },
+  { id: 'q5c', row: 3,   col: 1,   n: 'q7c', w: 'q6b', e: 'q7c' },
   // row 3.5
   { id: 'q6',  row: 3.5, col: -0.5, n: 'q8', w: 'q7', e: 'q7b' },
   { id: 'q6b', row: 3.5, col: 0.5,  n: 'q8b', w: 'q7b', e: 'q7c' },
@@ -177,13 +214,20 @@ const Q_NODES: QHexInit[] = [
   { id: 'q8',  row: 4.5, col: -0.5, n: 'q10', w: Q_V_P, e: 'q9', action: 'feedTheKraken' },
   { id: 'q8b', row: 4.5, col: 0.5,  n: 'q10b', w: 'q9', e: Q_V_S, action: 'feedTheKraken' },
   // row 5
-  { id: 'q9',  row: 5,   col: 0,   n: 'q11', w: 'q10', e: 'q10b' },
+  { id: 'q9',  row: 5,   col: 0,   n: Q_V_C, w: Q_V_P, e: Q_V_S },
   // row 5.5
   { id: 'q10',  row: 5.5, col: -0.5, n: Q_V_C, w: Q_V_C, e: 'q11' },
   { id: 'q10b', row: 5.5, col: 0.5,  n: Q_V_C, w: 'q11', e: Q_V_S },
   // row 6（北：邪教胜利）
   { id: 'q11', row: 6,   col: 0,   n: Q_V_C, w: Q_V_C, e: Q_V_C },
 ];
+
+// 每个方向的紧邻步长（row, col）：快图东西向走半行半列，北向走一整行
+const Q_STEP: Record<'north' | 'west' | 'east', [number, number]> = {
+  north: [1, 0],
+  west: [0.5, -0.5],
+  east: [0.5, 0.5],
+};
 
 function buildQuickMap(): GameMap {
   const hexes: Record<string, MapHex> = {};
@@ -200,12 +244,23 @@ function buildQuickMap(): GameMap {
       action: nd.action,
     };
   }
+  // 进线落点：victory_* 出口的紧邻格位置，键为 `格子>方向`
+  const victoryPoints: Record<string, { row: number; col: number }> = {};
+  for (const h of Object.values(hexes)) {
+    for (const dir of ['north', 'west', 'east'] as const) {
+      if (h.exits[dir].startsWith('victory_')) {
+        const [dr, dc] = Q_STEP[dir];
+        victoryPoints[`${h.id}>${dir}`] = { row: h.row + dr, col: h.col + dc };
+      }
+    }
+  }
   return {
     id: 'quick',
     nameZh: '短航程（5-7人）',
     hexes,
     startHexId: 'q1',
     dataStatus: 'unverified',
+    victoryPoints,
   };
 }
 

@@ -74,6 +74,12 @@ const LONG_CENTERS: Record<string, [number, number]> = {
   h31: [600, 105],
 };
 
+// 进线时船的落点 = 出发格中心 + 该方向的紧邻步长（像素，与标定线性模型一致）
+const VICTORY_DELTA: Record<'quick' | 'long', Record<'north' | 'west' | 'east', [number, number]>> = {
+  quick: { east: [135, -61], west: [-135, -61], north: [0, -170] },
+  long: { east: [145, -79], west: [-145, -79], north: [0, -158] },
+};
+
 const HEX_SIZE: Record<'quick' | 'long', { rw: number; rh: number }> = {
   quick: { rw: 64, rh: 66 },
   long: { rw: 72, rh: 80 },
@@ -101,7 +107,14 @@ const OfficialBoard: React.FC<BoardProps> = ({ view, map }) => {
   const { rw, rh } = HEX_SIZE[mapId];
   const moved = view.prevShipHex !== view.shipHex;
   const from = moved ? centers[view.prevShipHex] : undefined;
-  const to = centers[view.shipHex] ?? [600, 600];
+  // 进线落点（victory_*）：从出发格沿获胜牌方向走一格的紧邻位置
+  let to = centers[view.shipHex];
+  if (!to && moved && from) {
+    const prevHex = map.hexes[view.prevShipHex];
+    const dir = prevHex ? (['north', 'west', 'east'] as const).find((d) => prevHex.exits[d] === view.shipHex) : undefined;
+    const delta = dir ? VICTORY_DELTA[mapId][dir] : undefined;
+    if (delta) to = [from[0] + delta[0], from[1] + delta[1]];
+  }
 
   return (
     <svg
@@ -114,10 +127,10 @@ const OfficialBoard: React.FC<BoardProps> = ({ view, map }) => {
       <image href={IMG[mapId]} x={0} y={0} width={1200} height={1200} preserveAspectRatio="xMidYMid meet" />
 
       {/* 上次航行轨迹（深色衬底 + 金色虚线，在深浅海面上都可见） */}
-      {moved && from && (
+      {moved && from && to && (
         <line x1={from[0]} y1={from[1]} x2={to[0]} y2={to[1]} stroke="rgba(0,0,0,0.5)" strokeWidth={7} strokeDasharray="10 8" />
       )}
-      {moved && from && (
+      {moved && from && to && (
         <line x1={from[0]} y1={from[1]} x2={to[0]} y2={to[1]} stroke="#ffd34d" strokeWidth={4} strokeDasharray="10 8" />
       )}
 
@@ -127,11 +140,11 @@ const OfficialBoard: React.FC<BoardProps> = ({ view, map }) => {
       )}
 
       {/* 当前船位格：金色高亮 */}
-      <polygon points={hexPoints(to[0], to[1], rw, rh)} fill="rgba(255,211,77,0.16)" stroke="#ffd34d" strokeWidth={4.5} />
-      <polygon points={hexPoints(to[0], to[1], rw * 0.86, rh * 0.86)} fill="none" stroke="rgba(0,0,0,0.35)" strokeWidth={1.4} />
+      {to && <polygon points={hexPoints(to[0], to[1], rw, rh)} fill="rgba(255,211,77,0.16)" stroke="#ffd34d" strokeWidth={4.5} />}
+      {to && <polygon points={hexPoints(to[0], to[1], rw * 0.86, rh * 0.86)} fill="none" stroke="rgba(0,0,0,0.35)" strokeWidth={1.4} />}
 
       {/* 船位标记 */}
-      <Ship x={to[0]} y={to[1]} s={rw} />
+      {to && <Ship x={to[0]} y={to[1]} s={rw} />}
     </svg>
   );
 };

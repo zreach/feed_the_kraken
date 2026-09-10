@@ -173,6 +173,31 @@ describe('快航程地图（5-7人）', () => {
     expect(s8.navDeck.length).toBe(23);
   });
 
+  it('起点同色链路：第3张蓝/红向上而非直抵胜利区（用户实测回归）', () => {
+    // 实体板行为（2026-09 用户口述）：起点连打蓝牌，第3张向上到 q5c，
+    // 共 5 张蓝进蓝湾；红线镜像，第3张向上到 q5，共 5 张红进绯红湾（黄线同为 5 张）。
+    const walk = (dir: 'east' | 'west', steps: number) => {
+      let cur = quick.startHexId;
+      for (let i = 0; i < steps; i++) cur = quick.hexes[cur].exits[dir];
+      return cur;
+    };
+    expect(walk('east', 2)).toBe('q3b');
+    expect(walk('east', 3)).toBe('q5c');
+    expect(walk('east', 4)).toBe('q7c');
+    expect(walk('east', 5)).toBe('victory_sailor');
+    // 用户实测：两蓝一黄应落在东侧纵列正上方（q5c），不得跳到中间列（q5b）
+    expect(quick.hexes.q3b.exits.north).toBe('q5c');
+    // 用户实测：蓝后红 / 红后蓝 应汇合到中间列修道院格（q3c），不得落在两红/两蓝落点（q3）
+    expect(quick.hexes.q2b.exits.west).toBe('q3c');
+    expect(quick.hexes.q2.exits.east).toBe('q3c');
+    // 用户实测：q9 为三线交汇格——右=进蓝湾、左=进绯红湾、上=进海妖之域，均一步判胜
+    expect(quick.hexes.q9.exits).toEqual({ north: 'victory_cult', west: 'victory_pirate', east: 'victory_sailor' });
+    expect(walk('west', 2)).toBe('q3');
+    expect(walk('west', 3)).toBe('q5');
+    expect(walk('west', 4)).toBe('q7');
+    expect(walk('west', 5)).toBe('victory_pirate');
+  });
+
   it('快航程各胜利可达且距离合理（从起点）', () => {
     // BFS 计算从起点到各胜利的最少移动次数
     const dist = new Map<string, number>();
@@ -192,11 +217,11 @@ describe('快航程地图（5-7人）', () => {
         else if (!dist.has(e)) { dist.set(e, d + 1); queue.push(e); }
       }
     }
-    // 牌堆构成：红9/蓝5/黄5 → 三方都应在 7 步内可达（保证博弈空间）
-    expect(minPirate).toBeLessThanOrEqual(7);
-    expect(minSailor).toBeLessThanOrEqual(7);
-    expect(minCult).toBeLessThanOrEqual(7);
-    expect(Math.min(minPirate, minSailor, minCult)).toBeGreaterThanOrEqual(3);
+    // 精确距离（2026-09 出口表修正后）：海盗 4（黄黄黄红）、水手 5（黄黄蓝蓝蓝）、
+    // 邪教 5（全黄）；同色连打链见上一用例（蓝 5 / 红 5）。
+    expect(minPirate).toBe(4);
+    expect(minSailor).toBe(5);
+    expect(minCult).toBe(5);
   });
 });
 

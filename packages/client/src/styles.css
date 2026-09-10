@@ -1145,7 +1145,7 @@ button {
 .resume-token { width: 38px; height: 38px; padding: 0; overflow: hidden; border: 1px solid #b98c39; border-radius: 5px; background: #091a26; cursor: zoom-in; box-shadow: 0 2px 5px #0008; }
 .resume-token .card-art { width: 38px; min-width: 38px; }
 .resume-token .card-art img { width: 38px; height: 38px; object-fit: cover; object-position: top; border-radius: 3px; }
-.faction-mark-menu { position: absolute; z-index: 12; top: calc(50% + 34px); right: 0; width: 132px; padding: 7px; border: 1px solid var(--lantern); border-radius: 7px; background: #071722f5; box-shadow: 0 10px 24px #000c; }
+.faction-mark-menu { position: absolute; z-index: 30; left: calc(100% + 12px); top: 50%; transform: translateY(-50%); width: 150px; padding: 7px; border: 1px solid var(--lantern); border-radius: 7px; background: #071722f5; box-shadow: 0 10px 24px #000c; }
 .faction-mark-menu b { display: block; margin: 1px 3px 6px; color: var(--lantern); font: 700 11px var(--serif); }
 .faction-mark-menu button { width: 100%; margin: 2px 0; padding: 5px; border: 1px solid var(--seam); border-radius: 4px; color: var(--mist); background: #163348; cursor: pointer; }
 .faction-mark-menu button:hover { border-color: var(--lantern); color: #fff2ca; }

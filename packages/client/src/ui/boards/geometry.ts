@@ -6,8 +6,9 @@ import type { GameMap } from '@ftk/engine';
 // 格子尺寸按地图列数自适应：列少的地图（短航程）格子更大，铺满容器
 export function buildLayout(map: GameMap) {
   const hexes = Object.values(map.hexes);
-  const rows = [...new Set(hexes.map((h) => h.row))].sort((a, b) => a - b);
-  const cols = [...new Set(hexes.map((h) => h.col))].sort((a, b) => a - b);
+  const vps = Object.values(map.victoryPoints ?? {});
+  const rows = [...new Set([...hexes.map((h) => h.row), ...vps.map((v) => v.row)])].sort((a, b) => a - b);
+  const cols = [...new Set([...hexes.map((h) => h.col), ...vps.map((v) => v.col)])].sort((a, b) => a - b);
   const minRow = rows[0];
   const maxRow = rows[rows.length - 1];
   const minCol = cols[0];

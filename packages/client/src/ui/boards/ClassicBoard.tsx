@@ -51,11 +51,18 @@ const ClassicBoard: React.FC<BoardProps> = ({ view, map }) => {
   const rw = RW * 0.9;
   const rh = RH * 0.9;
   const moved = view.prevShipHex !== view.shipHex;
-  // 防御：船位/上次船位在地图数据中不存在时不渲染标记（旧存档或数据版本差异）
-  const fromHex = moved ? map.hexes[view.prevShipHex] : undefined;
-  const toHex = map.hexes[view.shipHex];
-  const from = moved && fromHex ? pos(fromHex.row, fromHex.col) : null;
-  const to = toHex ? pos(toHex.row, toHex.col) : null;
+  // 防御：船位/上次船位在地图数据中不存在时不渲染标记（旧存档或数据版本差异）；
+  // victory_* 船位（进线终点）按「出发格>方向」从地图 victoryPoints 取紧邻落点。
+  const locate = (id: string, prevId?: string) => {
+    const h = map.hexes[id];
+    if (h) return pos(h.row, h.col);
+    const prevHex = prevId ? map.hexes[prevId] : undefined;
+    const dir = prevHex ? (['north', 'west', 'east'] as const).find((d) => prevHex.exits[d] === id) : undefined;
+    const vp = prevHex && dir ? map.victoryPoints?.[`${prevId}>${dir}`] : undefined;
+    return vp ? pos(vp.row, vp.col) : null;
+  };
+  const from = moved ? locate(view.prevShipHex) : null;
+  const to = moved ? locate(view.shipHex, view.prevShipHex) : locate(view.shipHex);
 
   return (
     <svg

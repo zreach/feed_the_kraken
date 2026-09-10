@@ -459,10 +459,16 @@ function activateCharacter(state: GameState, rng: Rng, seatId: number, cid: stri
       });
       break;
     case 'chr_lookout':
+      if (state.navDeck.length === 0) reshuffleDeck(state, rng);
+      if (state.navDeck.length === 0) {
+        pushLog(state, '瞭望员：牌堆与弃牌均为空，无牌可看。');
+        break;
+      }
       pushPending(state, {
         kind: 'telescopeDecision',
         actorSeat: seatId,
-        data: { src: 'lookout' },
+        // 只会由视图投影下发给 actor；其他玩家收到 null，不能看到牌堆顶。
+        data: { src: 'lookout', cardPreview: state.navDeck[0] },
         reasonZh: '瞭望员：查看抽牌堆顶的导航牌（弃掉或放回）',
       });
       break;
@@ -1478,6 +1484,9 @@ function moveShip(state: GameState, dest: string, rng: Rng) {
     const kind = dest.split('_')[1] as 'pirate' | 'sailor' | 'cult';
     const zh = { pirate: '绯红湾', sailor: '蓝湾', cult: '海妖之域' };
     const faction = kind === 'sailor' ? 'sailor' : kind === 'pirate' ? 'pirate' : 'cult';
+    // 船先驶入线内（shipHex 置为 victory_*，渲染坐标见地图 victoryPoints），再立即终局
+    state.prevShipHex = state.shipHex;
+    state.shipHex = dest;
     pushLog(state, `船驶入了${zh[kind]}！`);
     endGame(
       state,
